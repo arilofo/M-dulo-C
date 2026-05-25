@@ -1,0 +1,422 @@
+@startuml
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam nodesep 35
+skinparam ranksep 45
+
+package "Capa de Presentación" {
+
+  class PantallaProveedores {
+    --
+    registrarProveedor()
+    modificarProveedor()
+    desactivarProveedor()
+    mostrarConfirmacion()
+    mostrarError()
+  }
+
+  class PantallaOrdenesCompra {
+    --
+    crearOrdenCompra()
+    consultarOrdenesPendientes()
+    mostrarDetalleOrden()
+    mostrarConfirmacion()
+    mostrarError()
+  }
+
+  class PantallaRecepciones {
+    --
+    registrarRecepcion()
+    mostrarConfirmacion()
+    mostrarError()
+  }
+
+  class PantallaFacturasProveedor {
+    --
+    ingresarFactura()
+    mostrarConfirmacion()
+    mostrarError()
+  }
+
+  class PantallaPagosProveedor {
+    --
+    registrarPago()
+    mostrarConfirmacion()
+    mostrarError()
+  }
+
+  class PantallaReportes {
+    --
+    generarEstadoCuenta()
+    generarReporteObligaciones()
+    mostrarReporte()
+    exportarPDF()
+    exportarExcel()
+  }
+
+  PantallaProveedores -[hidden]down-> PantallaOrdenesCompra
+  PantallaOrdenesCompra -[hidden]down-> PantallaRecepciones
+  PantallaRecepciones -[hidden]down-> PantallaFacturasProveedor
+  PantallaFacturasProveedor -[hidden]down-> PantallaPagosProveedor
+  PantallaPagosProveedor -[hidden]down-> PantallaReportes
+}
+
+package "Capa de Lógica de Negocio" {
+
+  together {
+    interface ObservadorFacturaProveedor <<Observer>> {
+      --
+      actualizarFacturaPendienteRetencion(factura: FacturaProveedor)
+    }
+
+    class EnviadorRetencionModuloD <<ConcreteObserver>> {
+      --
+      actualizarFacturaPendienteRetencion(factura: FacturaProveedor)
+    }
+
+    class GeneradorCuentaPorPagarAutomatica <<ConcreteObserver>> {
+      --
+      actualizarFacturaPendienteRetencion(factura: FacturaProveedor)
+    }
+  }
+
+  together {
+    interface ObservadorRecepcion <<Observer>> {
+      --
+      actualizarRecepcionCompletada(recepcion: Recepcion)
+    }
+
+    class NotificadorInventarioB <<ConcreteObserver>> {
+      --
+      actualizarRecepcionCompletada(recepcion: Recepcion)
+    }
+
+    class ActualizadorEstadoOrdenCompra <<ConcreteObserver>> {
+      --
+      actualizarRecepcionCompletada(recepcion: Recepcion)
+    }
+  }
+
+  together {
+    class GestorCuentasPorPagar {
+      --
+      crearOrdenDesdeManual()
+      crearOrdenDesdeSolicitud()
+      registrarRecepcion()
+      ingresarFactura()
+      generarCuentaPorPagar()
+      registrarPago()
+      actualizarSaldoPendiente()
+      generarEstadoCuenta()
+      generarReporteObligaciones()
+      alertarPagosPorVencer()
+      consultarOrdenesPendientes()
+      consultarPrecioCostoProducto()
+      consultarUltimoCostoAdquisicion()
+    }
+
+    interface ServicioImpuestosD {
+      --
+      consultarTarifaVigente()
+      consultarReglasRetencion()
+      enviarFacturaParaRetencion()
+      consultarComprobantePorFactura()
+    }
+
+    interface ServicioInventarioB {
+      --
+      consultarCatalogo()
+      leerSolicitudesPendientes()
+      actualizarEstadoSolicitud()
+      notificarMovimiento()
+    }
+
+    interface ServicioConsultaCostosA {
+      --
+      consultarPrecioCostoProducto()
+      consultarUltimoCostoAdquisicion()
+    }
+  }
+
+  ObservadorFacturaProveedor -[hidden]right-> EnviadorRetencionModuloD
+  EnviadorRetencionModuloD -[hidden]right-> GeneradorCuentaPorPagarAutomatica
+
+  ObservadorRecepcion -[hidden]right-> NotificadorInventarioB
+  NotificadorInventarioB -[hidden]right-> ActualizadorEstadoOrdenCompra
+
+  ObservadorFacturaProveedor -[hidden]down-> ObservadorRecepcion
+  ObservadorRecepcion -[hidden]down-> GestorCuentasPorPagar
+
+  GestorCuentasPorPagar -[hidden]right-> ServicioImpuestosD
+  ServicioImpuestosD -[hidden]right-> ServicioInventarioB
+  ServicioInventarioB -[hidden]right-> ServicioConsultaCostosA
+}
+
+package "Capa de Datos / Dominio Módulo C" {
+
+  class ProveedorPersonaNatural {
+    --
+    validarCedula()
+  }
+
+  class ProveedorPersonaJuridica {
+    --
+    validarRUC()
+  }
+
+  abstract class Proveedor {
+    id_proveedor: int
+    tipo_proveedor: ENUM
+    identificacion: VARCHAR(20)
+    razon_social: VARCHAR(200)
+    email: VARCHAR(150)
+    telefono: VARCHAR(20)
+    direccion: VARCHAR(300)
+    dias_credito: int
+    cuenta_bancaria: VARCHAR(50)
+    banco: VARCHAR(100)
+    calificacion: ENUM
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    registrar()
+    actualizar()
+    buscarPorId()
+    listar()
+    eliminarLogicamente()
+    obtenerDiasCredito()
+  }
+
+  class OrdenCompra {
+    id_oc: int
+    numero_oc: VARCHAR(20)
+    id_proveedor: int
+    ref_mod_b_id_solicitud: int
+    fecha_emision: date
+    fecha_entrega_esperada: date
+    estado: ENUM
+    total_estimado: decimal(12,2)
+    observaciones: text
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    calcularTotal()
+    cambiarEstado()
+    agregarDetalle()
+    guardar()
+    buscarPorId()
+    listarPendientes()
+    eliminarLogicamente()
+  }
+
+  class DetalleOrdenCompra {
+    id_detalle_oc: int
+    id_oc: int
+    ref_mod_b_id_producto: int
+    descripcion_al_momento: VARCHAR(200)
+    cantidad_solicitada: int
+    precio_unitario_pactado: decimal(12,2)
+    subtotal: decimal(12,2)
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    calcularSubtotal()
+    eliminarLogicamente()
+  }
+
+  class Recepcion <<Subject>> {
+    id_recepcion: int
+    id_oc: int
+    fecha_recepcion: date
+    tipo_recepcion: ENUM
+    notificado_inventario: tinyint
+    observaciones: text
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    observadores: List<ObservadorRecepcion>
+    --
+    registrarRecepcion()
+    validarRecepcion()
+    marcarInventarioNotificado()
+    agregarObservador(obs: ObservadorRecepcion)
+    eliminarObservador(obs: ObservadorRecepcion)
+    notificarObservadores()
+    eliminarLogicamente()
+  }
+
+  class DetalleRecepcion {
+    id_detalle_rec: int
+    id_recepcion: int
+    id_detalle_oc: int
+    ref_mod_b_id_producto: int
+    cantidad_recibida: int
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    validarCantidad()
+    eliminarLogicamente()
+  }
+
+  class FacturaProveedor <<Subject>> {
+    id_factura_prov: int
+    numero_factura_proveedor: VARCHAR(20)
+    id_proveedor: int
+    id_oc: int
+    id_recepcion: int
+    fecha_emision: date
+    base_imponible: decimal(12,2)
+    monto_iva: decimal(12,2)
+    total: decimal(12,2)
+    ref_mod_d_tarifa_id: int
+    tipo_bien_servicio: VARCHAR(10)
+    codigo_sustento: VARCHAR(2)
+    estado: ENUM
+    ref_mod_d_doc_id: int
+    num_autorizacion_retencion: VARCHAR(49)
+    xml_retencion: LONGTEXT
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    observadores: List<ObservadorFacturaProveedor>
+    --
+    calcularTotal()
+    validarFactura()
+    actualizarDatosRetencion()
+    guardar()
+    buscarPorId()
+    buscarPendientes()
+    agregarObservador(obs: ObservadorFacturaProveedor)
+    eliminarObservador(obs: ObservadorFacturaProveedor)
+    notificarObservadores()
+    eliminarLogicamente()
+  }
+
+  class CuentaPorPagar {
+    id_cxp: int
+    id_proveedor: int
+    id_factura_prov: int
+    monto_original: decimal(12,2)
+    saldo_pendiente: decimal(12,2)
+    fecha_vencimiento: date
+    estado: ENUM
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    calcularSaldo()
+    actualizarSaldo()
+    marcarComoPagada()
+    marcarComoPagadaParcialmente()
+    estaVencida()
+    guardar()
+    obtenerVencidas()
+    obtenerProximasAVencer()
+    eliminarLogicamente()
+  }
+
+  class PagoProveedor {
+    id_pago: int
+    id_cxp: int
+    id_proveedor: int
+    fecha_pago: date
+    monto: decimal(12,2)
+    forma_pago: ENUM
+    referencia: VARCHAR(100)
+    activo: tinyint
+    fecha_creacion: datetime
+    usuario_creacion: varchar(100)
+    fecha_eliminacion: datetime
+    eliminado_por: varchar(100)
+    --
+    registrarPago()
+    validarMonto()
+    guardar()
+    listarPorCuenta()
+    eliminarLogicamente()
+  }
+
+  ProveedorPersonaNatural -[hidden]down-> Proveedor
+  ProveedorPersonaJuridica -[hidden]down-> Proveedor
+
+  Proveedor -[hidden]right-> OrdenCompra
+  OrdenCompra -[hidden]right-> Recepcion
+  Recepcion -[hidden]right-> FacturaProveedor
+  FacturaProveedor -[hidden]right-> CuentaPorPagar
+
+  DetalleOrdenCompra -[hidden]down-> OrdenCompra
+  DetalleRecepcion -[hidden]down-> Recepcion
+  PagoProveedor -[hidden]down-> CuentaPorPagar
+
+  DetalleOrdenCompra -[hidden]right-> DetalleRecepcion
+  DetalleRecepcion -[hidden]right-> PagoProveedor
+}
+
+Proveedor <|-- ProveedorPersonaNatural
+Proveedor <|-- ProveedorPersonaJuridica
+
+Proveedor "1" --> "0..*" OrdenCompra
+Proveedor "1" --> "0..*" FacturaProveedor
+Proveedor "1" --> "0..*" CuentaPorPagar
+
+OrdenCompra "1" *-- "1..*" DetalleOrdenCompra
+OrdenCompra "1" --> "0..*" Recepcion
+Recepcion "1" *-- "1..*" DetalleRecepcion
+DetalleRecepcion "0..*" --> "1" DetalleOrdenCompra
+
+OrdenCompra "1" --> "0..*" FacturaProveedor
+Recepcion "1" --> "0..1" FacturaProveedor
+FacturaProveedor "1" --> "1" CuentaPorPagar
+CuentaPorPagar "1" --> "0..*" PagoProveedor
+
+PantallaProveedores --> GestorCuentasPorPagar
+PantallaOrdenesCompra --> GestorCuentasPorPagar
+PantallaRecepciones --> GestorCuentasPorPagar
+PantallaFacturasProveedor --> GestorCuentasPorPagar
+PantallaPagosProveedor --> GestorCuentasPorPagar
+PantallaReportes --> GestorCuentasPorPagar
+
+GestorCuentasPorPagar --> Proveedor
+GestorCuentasPorPagar --> OrdenCompra
+GestorCuentasPorPagar --> DetalleOrdenCompra
+GestorCuentasPorPagar --> Recepcion
+GestorCuentasPorPagar --> FacturaProveedor
+GestorCuentasPorPagar --> CuentaPorPagar
+GestorCuentasPorPagar --> PagoProveedor
+
+GestorCuentasPorPagar ..> ServicioInventarioB : interfaz con Módulo B
+GestorCuentasPorPagar ..> ServicioImpuestosD : interfaz con Módulo D
+GestorCuentasPorPagar ..|> ServicioConsultaCostosA : expone costo a Módulo A
+
+Recepcion "1" o--> "0..*" ObservadorRecepcion : observadores
+ObservadorRecepcion <|.. NotificadorInventarioB
+ObservadorRecepcion <|.. ActualizadorEstadoOrdenCompra
+NotificadorInventarioB ..> ServicioInventarioB : notifica ingreso
+ActualizadorEstadoOrdenCompra ..> OrdenCompra : actualiza estado
+
+FacturaProveedor "1" o--> "0..*" ObservadorFacturaProveedor : observadores
+ObservadorFacturaProveedor <|.. EnviadorRetencionModuloD
+ObservadorFacturaProveedor <|.. GeneradorCuentaPorPagarAutomatica
+EnviadorRetencionModuloD ..> ServicioImpuestosD : envía factura
+GeneradorCuentaPorPagarAutomatica ..> CuentaPorPagar : crea obligación
+@enduml
