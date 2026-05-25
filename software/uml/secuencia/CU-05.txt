@@ -1,0 +1,96 @@
+@startuml
+title CU-05 Ingresar factura de proveedor
+
+actor Jefe de Compras as JC
+participant PantallaFacturasProveedornboundary as Pantalla
+participant GestorCuentasPorPagarncontrol as Gestor
+participant FacturaProveedornSubject as Factura
+participant Proveedornentity as Prov
+participant CuentaPorPagarnentity as CxP
+participant EnviadorRetencionModuloDnConcreteObserver as ObsRet
+participant GeneradorCuentaPorPagarAutomaticanConcreteObserver as ObsCxP
+participant ServicioImpuestosDninterface as ImpD
+
+JC - Pantalla  ingresarFactura()
+activate Pantalla
+
+Pantalla - Gestor  ingresarFactura()
+activate Gestor
+
+Gestor - Factura  validarFactura()
+activate Factura
+Factura -- Gestor  facturaValida
+deactivate Factura
+
+alt factura valida
+
+    Gestor - ImpD  consultarTarifaVigente()
+    activate ImpD
+    ImpD -- Gestor  tarifaIVA
+    deactivate ImpD
+
+    Gestor - ImpD  consultarReglasRetencion()
+    activate ImpD
+    ImpD -- Gestor  reglasRetencion
+    deactivate ImpD
+
+    Gestor - Factura  calcularTotal()
+    activate Factura
+    Factura -- Gestor  totalCalculado
+    deactivate Factura
+
+    Gestor - Factura  guardar(estado pendiente_retencion)
+    activate Factura
+    Factura -- Gestor  facturaRegistrada
+    deactivate Factura
+
+    Gestor - Factura  notificarObservadores()
+    activate Factura
+
+    Factura - ObsRet  actualizarFacturaPendienteRetencion(factura)
+    activate ObsRet
+    ObsRet - ImpD  enviarFacturaParaRetencion()
+    activate ImpD
+    ImpD -- ObsRet  comprobanteRetencion
+    deactivate ImpD
+
+    ObsRet - Factura  actualizarDatosRetencion()
+    activate Factura
+    Factura -- ObsRet  retencionGenerada
+    deactivate Factura
+    ObsRet -- Factura  retencionProcesada
+    deactivate ObsRet
+
+    Factura - ObsCxP  actualizarFacturaPendienteRetencion(factura)
+    activate ObsCxP
+
+    ObsCxP - Prov  obtenerDiasCredito()
+    activate Prov
+    Prov -- ObsCxP  diasCredito
+    deactivate Prov
+
+    ObsCxP - CxP  guardar()
+    activate CxP
+    CxP -- ObsCxP  cuentaPorPagarGenerada
+    deactivate CxP
+
+    ObsCxP -- Factura  cuentaGenerada
+    deactivate ObsCxP
+
+    Factura -- Gestor  observadoresNotificados
+    deactivate Factura
+
+    Gestor -- Pantalla  facturaIngresada
+    Pantalla -- JC  mostrarConfirmacion()
+
+else factura invalida
+
+    Gestor -- Pantalla  errorFactura
+    Pantalla -- JC  mostrarError()
+
+end
+
+deactivate Gestor
+deactivate Pantalla
+@enduml
+
