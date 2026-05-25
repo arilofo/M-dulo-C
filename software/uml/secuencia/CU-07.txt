@@ -1,0 +1,70 @@
+@startuml
+title CU-07 Registrar pago a proveedor
+
+actor "Tesorero" as TE
+participant "PantallaPagosProveedor\n<<boundary>>" as Pantalla
+participant "GestorCuentasPorPagar\n<<control>>" as Gestor
+participant "CuentaPorPagar\n<<entity>>" as CxP
+participant "PagoProveedor\n<<entity>>" as Pago
+
+TE -> Pantalla : registrarPago()
+activate Pantalla
+
+Pantalla -> Gestor : registrarPago()
+activate Gestor
+
+Gestor -> CxP : calcularSaldo()
+activate CxP
+CxP --> Gestor : saldoPendiente
+deactivate CxP
+
+Gestor -> Pago : validarMonto()
+activate Pago
+Pago --> Gestor : montoValido
+deactivate Pago
+
+alt monto valido
+
+    Gestor -> Pago : registrarPago()
+    activate Pago
+    Pago --> Gestor : pagoRegistrado
+    deactivate Pago
+
+    Gestor -> Pago : guardar()
+    activate Pago
+    Pago --> Gestor : pagoGuardado
+    deactivate Pago
+
+    Gestor -> CxP : actualizarSaldo()
+    activate CxP
+    CxP --> Gestor : saldoActualizado
+
+    alt saldo igual a cero
+        Gestor -> CxP : marcarComoPagada()
+        CxP --> Gestor : cuentaPagada
+    else saldo pendiente mayor a cero
+        Gestor -> CxP : marcarComoPagadaParcialmente()
+        CxP --> Gestor : cuentaPagadaParcialmente
+    end
+
+    deactivate CxP
+
+    Gestor --> Pantalla : pagoConfirmado
+    Pantalla --> TE : mostrarConfirmacion()
+
+else monto invalido
+
+    Gestor --> Pantalla : errorPago
+    Pantalla --> TE : mostrarError()
+
+end
+
+deactivate Gestor
+deactivate Pantalla
+@enduml
+
+
+
+f) Diseño arquitectónico: Diagrama de componentes
+• Posición del módulo dentro de la arquitectura global del SIGE.
+• Dependencias e interfaces con los otros módulos. Estilo arquitectónico justificado.
