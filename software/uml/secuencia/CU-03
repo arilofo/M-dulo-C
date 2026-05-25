@@ -1,0 +1,83 @@
+@startuml
+title CU-03 Registrar recepción de mercadería
+
+actor "Jefe de Compras" as JC
+participant "PantallaRecepciones\n<<boundary>>" as Pantalla
+participant "GestorCuentasPorPagar\n<<control>>" as Gestor
+participant "OrdenCompra\n<<entity>>" as OC
+participant "Recepcion\n<<Subject>>" as Rec
+participant "DetalleRecepcion\n<<entity>>" as DetRec
+participant "ActualizadorEstadoOrdenCompra\n<<ConcreteObserver>>" as ObsOC
+participant "NotificadorInventarioB\n<<ConcreteObserver>>" as ObsInv
+participant "ServicioInventarioB\n<<interface>>" as InvB
+
+JC -> Pantalla : registrarRecepcion()
+activate Pantalla
+
+Pantalla -> Gestor : registrarRecepcion()
+activate Gestor
+
+Gestor -> OC : buscarPorId()
+activate OC
+OC --> Gestor : ordenCompra
+deactivate OC
+
+Gestor -> Rec : validarRecepcion()
+activate Rec
+Rec --> Gestor : recepcionValida
+deactivate Rec
+
+alt recepcion valida
+
+    Gestor -> DetRec : validarCantidad()
+    activate DetRec
+    DetRec --> Gestor : cantidadValida
+    deactivate DetRec
+
+    Gestor -> Rec : registrarRecepcion()
+    activate Rec
+    Rec --> Gestor : recepcionRegistrada
+    deactivate Rec
+
+    Gestor -> Rec : notificarObservadores()
+    activate Rec
+
+    Rec -> ObsOC : actualizarRecepcionCompletada(recepcion)
+    activate ObsOC
+    ObsOC -> OC : cambiarEstado()
+    activate OC
+    OC --> ObsOC : estadoActualizado
+    deactivate OC
+    ObsOC --> Rec : ordenActualizada
+    deactivate ObsOC
+
+    Rec -> ObsInv : actualizarRecepcionCompletada(recepcion)
+    activate ObsInv
+    ObsInv -> InvB : notificarMovimiento()
+    activate InvB
+    InvB --> ObsInv : movimientoRegistrado
+    deactivate InvB
+
+    ObsInv -> Rec : marcarInventarioNotificado()
+    activate Rec
+    Rec --> ObsInv : notificacionRegistrada
+    deactivate Rec
+    ObsInv --> Rec : inventarioNotificado
+    deactivate ObsInv
+
+    Rec --> Gestor : observadoresNotificados
+    deactivate Rec
+
+    Gestor --> Pantalla : recepcionConfirmada
+    Pantalla --> JC : mostrarConfirmacion()
+
+else recepcion invalida
+
+    Gestor --> Pantalla : errorRecepcion
+    Pantalla --> JC : mostrarError()
+
+end
+
+deactivate Gestor
+deactivate Pantalla
+@enduml
